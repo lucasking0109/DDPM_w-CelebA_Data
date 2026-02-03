@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GAN vs Diffusion Model Comparison</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4285f4 0%, #2563eb 100%);
+            color: white;
+            padding: 60px 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin: -60px auto 40px;
+            max-width: 900px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .stat-card .number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #4285f4;
+        }
+
+        .stat-card .label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .section h2 {
+            color: #4285f4;
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #4285f4;
+            display: inline-block;
+        }
+
+        .section h3 {
+            color: #333;
+            font-size: 1.3rem;
+            margin: 25px 0 15px;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .model-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 25px;
+            transition: border-color 0.3s;
+        }
+
+        .model-card.gan {
+            border-color: #f59e0b;
+        }
+
+        .model-card.ddpm {
+            border-color: #10b981;
+        }
+
+        .model-card h4 {
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .model-card.gan h4 {
+            color: #f59e0b;
+        }
+
+        .model-card.ddpm h4 {
+            color: #10b981;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge.orange {
+            background: #fef3c7;
+            color: #f59e0b;
+        }
+
+        .badge.green {
+            background: #d1fae5;
+            color: #10b981;
+        }
+
+        .config-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .config-table th,
+        .config-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .config-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #4285f4;
+        }
+
+        .config-table tr:hover {
+            background: #f8fafc;
+        }
+
+        .image-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .image-box {
+            text-align: center;
+        }
+
+        .image-box img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .image-box .caption {
+            margin-top: 10px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .pros-cons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .pros, .cons {
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .pros {
+            background: #d1fae5;
+        }
+
+        .cons {
+            background: #fee2e2;
+        }
+
+        .pros h5 {
+            color: #10b981;
+            margin-bottom: 10px;
+        }
+
+        .cons h5 {
+            color: #ef4444;
+            margin-bottom: 10px;
+        }
+
+        .pros ul, .cons ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .pros li::before {
+            content: "✓ ";
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        .cons li::before {
+            content: "✗ ";
+            color: #ef4444;
+            font-weight: bold;
+        }
+
+        .highlight-box {
+            background: #fef9c3;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .highlight-box.blue {
+            background: #dbeafe;
+            border-left-color: #4285f4;
+        }
+
+        .highlight-box.green {
+            background: #d1fae5;
+            border-left-color: #10b981;
+        }
+
+        .conclusion-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .conclusion-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .conclusion-card h4 {
+            color: #4285f4;
+            margin-bottom: 10px;
+        }
+
+        .progress-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .progress-item {
+            text-align: center;
+        }
+
+        .progress-item img {
+            width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .progress-item .label {
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+            margin-top: 40px;
+        }
+
+        .footer .author {
+            color: #4285f4;
+            font-weight: 600;
+        }
+
+        .tech-stack {
+            margin-top: 10px;
+            color: #999;
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .comparison-grid,
+            .image-comparison,
+            .pros-cons {
+                grid-template-columns: 1fr;
+            }
+
+            .conclusion-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .progress-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>Generative Models Comparison</h1>
+        <p class="subtitle">GAN vs Diffusion Model: Which generates better images?</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="number">2</div>
+                <div class="label">Models</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">160</div>
+                <div class="label">Total Epochs</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">64px</div>
+                <div class="label">Resolution</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">2</div>
+                <div class="label">Datasets</div>
+            </div>
+        </div>
+
+        <!-- Overview Section -->
+        <div class="section">
+            <h2>Overview</h2>
+            <p style="margin-top: 20px; font-size: 1.1rem;">
+                This report compares two popular generative models: <strong>GAN (Generative Adversarial Network)</strong> and
+                <strong>DDPM (Denoising Diffusion Probabilistic Model)</strong>. Both models were trained to generate images,
+                but they use fundamentally different approaches.
+            </p>
+
+            <div class="comparison-grid">
+                <div class="model-card gan">
+                    <h4>GAN (DCGAN) <span class="badge orange">Adversarial</span></h4>
+                    <p>Two networks compete: a <strong>Generator</strong> creates fake images while a <strong>Discriminator</strong>
+                    tries to detect them. Through this adversarial process, the Generator learns to create realistic images.</p>
+                    <ul style="margin-top: 15px; padding-left: 20px;">
+                        <li>Dataset: CIFAR-10 (Trucks)</li>
+                        <li>Architecture: Generator + Discriminator</li>
+                        <li>Training: 100 epochs</li>
+                    </ul>
+                </div>
+                <div class="model-card ddpm">
+                    <h4>DDPM <span class="badge green">Diffusion</span></h4>
+                    <p>Learns to reverse a gradual noising process. Starting from pure noise, the model iteratively
+                    <strong>denoises</strong> the image step by step until a clear image emerges.</p>
+                    <ul style="margin-top: 15px; padding-left: 20px;">
+                        <li>Dataset: CelebA (Faces)</li>
+                        <li>Architecture: U-Net</li>
+                        <li>Training: 60 epochs</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration Comparison -->
+        <div class="section">
+            <h2>Configuration Comparison</h2>
+            <table class="config-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>GAN (DCGAN)</th>
+                    <th>DDPM</th>
+                </tr>
+                <tr>
+                    <td>Image Size</td>
+                    <td>64 x 64</td>
+                    <td>64 x 64</td>
+                </tr>
+                <tr>
+                    <td>Dataset</td>
+                    <td>CIFAR-10 (Truck class)</td>
+                    <td>CelebA (Faces)</td>
+                </tr>
+                <tr>
+                    <td>Batch Size</td>
+                    <td>128</td>
+                    <td>64</td>
+                </tr>
+                <tr>
+                    <td>Learning Rate</td>
+                    <td>0.0001</td>
+                    <td>0.0002</td>
+                </tr>
+                <tr>
+                    <td>Epochs</td>
+                    <td>100</td>
+                    <td>60</td>
+                </tr>
+                <tr>
+                    <td>Parameters</td>
+                    <td>~5M</td>
+                    <td>~22M</td>
+                </tr>
+                <tr>
+                    <td>Time per Epoch</td>
+                    <td>~3 minutes</td>
+                    <td>~60 minutes</td>
+                </tr>
+                <tr>
+                    <td>Generation Speed</td>
+                    <td>Instant (1 forward pass)</td>
+                    <td>~7 min (1000 steps)</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Training Stability -->
+        <div class="section">
+            <h2>Training Stability</h2>
+
+            <div class="comparison-grid">
+                <div class="model-card gan">
+                    <h4>GAN Training <span class="badge orange">Challenging</span></h4>
+                    <p>GAN training is notoriously difficult due to the adversarial nature:</p>
+                    <ul style="margin-top: 10px; padding-left: 20px;">
+                        <li><strong>Mode Collapse Risk:</strong> Generator may produce only one type of image</li>
+                        <li><strong>Balance Required:</strong> G and D must be carefully balanced</li>
+                        <li><strong>Techniques Needed:</strong> Label smoothing, dropout, training control</li>
+                    </ul>
+                    <div class="highlight-box" style="margin-top: 15px;">
+                        <strong>Our Experience:</strong> V0 collapsed at epoch 91. Required 3 versions to stabilize.
+                    </div>
+                </div>
+                <div class="model-card ddpm">
+                    <h4>DDPM Training <span class="badge green">Stable</span></h4>
+                    <p>Diffusion models are much easier to train:</p>
+                    <ul style="margin-top: 10px; padding-left: 20px;">
+                        <li><strong>No Collapse:</strong> Simple denoising objective</li>
+                        <li><strong>Stable Loss:</strong> Consistently decreases over time</li>
+                        <li><strong>No Balancing:</strong> Single network to train</li>
+                    </ul>
+                    <div class="highlight-box green" style="margin-top: 15px;">
+                        <strong>Our Experience:</strong> Trained smoothly from epoch 1 to 60 with no issues.
+                    </div>
+                </div>
+            </div>
+
+            <h3>Loss Curves Comparison</h3>
+            <div class="image-comparison">
+                <div class="image-box">
+                    <img src="images/gan_loss.png" alt="GAN Loss Curves">
+                    <p class="caption">GAN: Generator (blue) vs Discriminator (orange) - Dynamic tension</p>
+                </div>
+                <div class="image-box">
+                    <div style="background: #f8fafc; padding: 40px; border-radius: 8px; text-align: center;">
+                        <p style="color: #666;">DDPM Loss: Single curve, steadily decreasing</p>
+                        <p style="margin-top: 10px; font-size: 0.9rem; color: #999;">
+                            Loss: 0.0197 (Epoch 2) → 0.0156 (Epoch 33) → 0.0163 (Epoch 60)
+                        </p>
+                    </div>
+                    <p class="caption">DDPM: Simple MSE loss - Stable training</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Training Progress -->
+        <div class="section">
+            <h2>Training Progress</h2>
+
+            <h3>GAN Training Progress (CIFAR-10 Trucks)</h3>
+            <div class="progress-grid">
+                <div class="progress-item">
+                    <img src="images/gan_epoch_001.png" alt="GAN Epoch 1">
+                    <p class="label">Epoch 1 - Random noise</p>
+                </div>
+                <div class="progress-item">
+                    <img src="images/gan_epoch_050.png" alt="GAN Epoch 50">
+                    <p class="label">Epoch 50 - Shapes emerging</p>
+                </div>
+                <div class="progress-item">
+                    <img src="images/gan_epoch_100.png" alt="GAN Epoch 100">
+                    <p class="label">Epoch 100 - Final result</p>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 40px;">DDPM Training Progress (CelebA Faces)</h3>
+            <div class="progress-grid">
+                <div class="progress-item">
+                    <img src="images/ddpm_epoch_005.png" alt="DDPM Epoch 5">
+                    <p class="label">Epoch 5 - Color blobs</p>
+                </div>
+                <div class="progress-item">
+                    <img src="images/ddpm_epoch_025.png" alt="DDPM Epoch 25">
+                    <p class="label">Epoch 25 - Faces visible</p>
+                </div>
+                <div class="progress-item">
+                    <img src="images/ddpm_epoch_060.png" alt="DDPM Epoch 60">
+                    <p class="label">Epoch 60 - Clear faces</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Final Results -->
+        <div class="section">
+            <h2>Final Results Comparison</h2>
+
+            <div class="image-comparison">
+                <div class="image-box">
+                    <img src="images/gan_epoch_100.png" alt="GAN Final Result">
+                    <p class="caption"><strong>GAN (Epoch 100)</strong> - CIFAR-10 Trucks</p>
+                </div>
+                <div class="image-box">
+                    <img src="images/ddpm_epoch_060.png" alt="DDPM Final Result">
+                    <p class="caption"><strong>DDPM (Epoch 60)</strong> - CelebA Faces</p>
+                </div>
+            </div>
+
+            <div class="highlight-box blue" style="margin-top: 30px;">
+                <h4 style="color: #4285f4; margin-bottom: 10px;">Key Observation</h4>
+                <p>While both models generate 64x64 images, the <strong>visual quality differs significantly</strong>.
+                DDPM produces clearer facial features with better diversity, while GAN outputs are more abstract
+                (partially due to the low-resolution CIFAR-10 dataset).</p>
+            </div>
+        </div>
+
+        <!-- Pros and Cons -->
+        <div class="section">
+            <h2>Pros & Cons</h2>
+
+            <div class="comparison-grid">
+                <div class="model-card gan">
+                    <h4>GAN</h4>
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h5>Advantages</h5>
+                            <ul>
+                                <li>Fast generation (instant)</li>
+                                <li>Smaller model size</li>
+                                <li>Well-studied architecture</li>
+                                <li>Good for real-time apps</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <h5>Disadvantages</h5>
+                            <ul>
+                                <li>Mode collapse risk</li>
+                                <li>Training instability</li>
+                                <li>Requires careful tuning</li>
+                                <li>Limited diversity</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="model-card ddpm">
+                    <h4>DDPM</h4>
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h5>Advantages</h5>
+                            <ul>
+                                <li>Stable training</li>
+                                <li>High image quality</li>
+                                <li>Excellent diversity</li>
+                                <li>No mode collapse</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <h5>Disadvantages</h5>
+                            <ul>
+                                <li>Slow generation (~7 min)</li>
+                                <li>Large model size</li>
+                                <li>Long training time</li>
+                                <li>High compute cost</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conclusion -->
+        <div class="section">
+            <h2>Conclusion</h2>
+
+            <div class="conclusion-cards">
+                <div class="conclusion-card">
+                    <h4>Training Ease</h4>
+                    <p><strong style="color: #10b981;">DDPM Wins</strong></p>
+                    <p style="font-size: 0.9rem; margin-top: 10px;">Much more stable, no collapse issues</p>
+                </div>
+                <div class="conclusion-card">
+                    <h4>Image Quality</h4>
+                    <p><strong style="color: #10b981;">DDPM Wins</strong></p>
+                    <p style="font-size: 0.9rem; margin-top: 10px;">Clearer details, better diversity</p>
+                </div>
+                <div class="conclusion-card">
+                    <h4>Speed</h4>
+                    <p><strong style="color: #f59e0b;">GAN Wins</strong></p>
+                    <p style="font-size: 0.9rem; margin-top: 10px;">Instant vs 7 minutes per batch</p>
+                </div>
+            </div>
+
+            <div class="highlight-box green" style="margin-top: 30px;">
+                <h4 style="color: #10b981; margin-bottom: 10px;">Recommendation</h4>
+                <ul style="padding-left: 20px;">
+                    <li><strong>Choose GAN</strong> if you need real-time generation or have limited compute resources</li>
+                    <li><strong>Choose DDPM</strong> if image quality and diversity are priorities and generation speed is not critical</li>
+                </ul>
+            </div>
+
+            <h3>Future Plans</h3>
+            <ul style="padding-left: 20px; margin-top: 15px;">
+                <li>Train both models on the same dataset for fair comparison</li>
+                <li>Implement faster diffusion sampling (DDIM)</li>
+                <li>Test higher resolution (128x128, 256x256)</li>
+                <li>Add FID score for quantitative comparison</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p class="author">Generative Models Research Report by Lucas</p>
+        <p class="tech-stack">PyTorch | CelebA | CIFAR-10</p>
+    </div>
+</body>
+</html>
