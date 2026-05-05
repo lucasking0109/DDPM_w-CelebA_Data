@@ -1,7 +1,6 @@
 """
 資料集載入模組
 支援 CIFAR-10 和 CelebA 資料集
-共用 GAN model 的 data_cache
 """
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
@@ -10,7 +9,7 @@ from torch.utils.data import DataLoader
 
 def get_dataloader(
     dataset_name: str = "celeba",
-    data_root: str = "/Users/lucasking/Desktop/GAN model/data_cache",
+    data_root: str = "./data_cache",
     image_size: int = 64,
     batch_size: int = 64,
     num_workers: int = 4,
@@ -20,7 +19,7 @@ def get_dataloader(
 
     Args:
         dataset_name: 資料集名稱 ("cifar10" 或 "celeba")
-        data_root: 資料儲存路徑 (預設共用 GAN 的 data_cache)
+        data_root: 資料儲存路徑
         image_size: 目標圖片大小
         batch_size: 批次大小
         num_workers: 資料載入的工作執行緒數

@@ -2,6 +2,7 @@
 DDPM 配置檔案
 基於原始 DDPM 論文的超參數設定
 """
+import os
 from pathlib import Path
 import torch
 
@@ -11,8 +12,8 @@ class Config:
 
     # ==================== 路徑設定 ====================
     PROJECT_ROOT = Path(__file__).parent
-    # 共用 GAN model 的資料快取
-    DATA_CACHE_DIR = Path("/Users/lucasking/Desktop/GAN model/data_cache")
+    # 資料快取目錄；可用環境變數 DDPM_DATA_DIR 覆蓋
+    DATA_CACHE_DIR = Path(os.environ.get("DDPM_DATA_DIR", PROJECT_ROOT / "data_cache"))
     OUTPUT_DIR = PROJECT_ROOT / "outputs_ddpm"
     CHECKPOINT_DIR = OUTPUT_DIR / "checkpoints"
     SAMPLE_DIR = OUTPUT_DIR / "samples"
