@@ -1,6 +1,6 @@
 """
-資料集載入模組
-支援 CIFAR-10 和 CelebA 資料集
+Dataset loading.
+Supports CIFAR-10 and CelebA.
 """
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
@@ -15,20 +15,19 @@ def get_dataloader(
     num_workers: int = 4,
 ):
     """
-    取得資料載入器
+    Build a training DataLoader.
 
     Args:
-        dataset_name: 資料集名稱 ("cifar10" 或 "celeba")
-        data_root: 資料儲存路徑
-        image_size: 目標圖片大小
-        batch_size: 批次大小
-        num_workers: 資料載入的工作執行緒數
+        dataset_name: "cifar10" or "celeba"
+        data_root: where to store / find the data
+        image_size: target image size
+        batch_size: batch size
+        num_workers: data loading workers
 
     Returns:
-        DataLoader: 訓練資料載入器
+        DataLoader for training
     """
-    # 定義圖片轉換
-    # 輸出範圍 [-1, 1]，與 DDPM 論文一致
+    # Output range [-1, 1] to match the DDPM paper
     if dataset_name.lower() == "celeba":
         transform = transforms.Compose([
             transforms.Resize(image_size),
@@ -50,7 +49,6 @@ def get_dataloader(
             ),
         ])
 
-    # 載入資料集
     if dataset_name.lower() == "cifar10":
         dataset = datasets.CIFAR10(
             root=data_root,
@@ -58,19 +56,18 @@ def get_dataloader(
             download=True,
             transform=transform,
         )
-        print(f"載入資料集: CIFAR-10")
+        print(f"Loaded dataset: CIFAR-10")
     elif dataset_name.lower() == "celeba":
         dataset = datasets.CelebA(
             root=data_root,
             split='train',
-            download=True,  # 自動下載
+            download=True,
             transform=transform,
         )
-        print(f"載入資料集: CelebA")
+        print(f"Loaded dataset: CelebA")
     else:
-        raise ValueError(f"不支援的資料集: {dataset_name}")
+        raise ValueError(f"Unsupported dataset: {dataset_name}")
 
-    # 建立 DataLoader
     dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
@@ -80,9 +77,9 @@ def get_dataloader(
         drop_last=True,
     )
 
-    print(f"  - 總樣本數: {len(dataset)}")
-    print(f"  - 批次大小: {batch_size}")
-    print(f"  - 批次數量: {len(dataloader)}")
-    print(f"  - 圖片大小: {image_size}x{image_size}")
+    print(f"  - Total samples: {len(dataset)}")
+    print(f"  - Batch size: {batch_size}")
+    print(f"  - Num batches: {len(dataloader)}")
+    print(f"  - Image size: {image_size}x{image_size}")
 
     return dataloader

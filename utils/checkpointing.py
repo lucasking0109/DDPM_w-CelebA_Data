@@ -1,5 +1,5 @@
 """
-模型檢查點儲存與載入
+Save and load model checkpoints.
 """
 import torch
 from pathlib import Path
@@ -14,15 +14,15 @@ def save_checkpoint(
     ema_model=None,
 ):
     """
-    儲存模型檢查點
+    Save a model checkpoint.
 
     Args:
-        model: U-Net 模型
-        optimizer: 優化器
-        epoch: 當前 epoch
-        loss: 當前損失
-        filepath: 儲存路徑
-        ema_model: EMA 模型 (可選)
+        model: U-Net model
+        optimizer: optimizer
+        epoch: current epoch
+        loss: current loss
+        filepath: save path
+        ema_model: optional EMA model
     """
     checkpoint = {
         "model_state_dict": model.state_dict(),
@@ -35,7 +35,7 @@ def save_checkpoint(
         checkpoint["ema_model_state_dict"] = ema_model.state_dict()
 
     torch.save(checkpoint, filepath)
-    print(f"檢查點已儲存: {filepath}")
+    print(f"Checkpoint saved: {filepath}")
 
 
 def load_checkpoint(
@@ -46,18 +46,17 @@ def load_checkpoint(
     device="cpu",
 ):
     """
-    載入模型檢查點
+    Load a model checkpoint.
 
     Args:
-        filepath: 檢查點路徑
-        model: U-Net 模型
-        optimizer: 優化器 (可選)
-        ema_model: EMA 模型 (可選)
-        device: 載入設備
+        filepath: checkpoint path
+        model: U-Net model
+        optimizer: optional optimizer
+        ema_model: optional EMA model
+        device: device to load onto
 
     Returns:
-        epoch: 訓練到的 epoch
-        loss: 最後的損失值
+        epoch, loss
     """
     checkpoint = torch.load(filepath, map_location=device)
 
@@ -72,7 +71,7 @@ def load_checkpoint(
     epoch = checkpoint.get("epoch", 0)
     loss = checkpoint.get("loss", 0.0)
 
-    print(f"檢查點已載入: {filepath}")
+    print(f"Checkpoint loaded: {filepath}")
     print(f"  - Epoch: {epoch}")
     print(f"  - Loss: {loss:.6f}")
 

@@ -1,7 +1,6 @@
 """
-U-Net 模型
-用於預測 DDPM 中的噪聲
-包含時間嵌入、殘差塊和自注意力機制
+U-Net for predicting noise in DDPM.
+Includes time embeddings, residual blocks, and self-attention.
 """
 import math
 import torch
@@ -11,12 +10,9 @@ import torch.nn.functional as F
 
 class SinusoidalPositionEmbedding(nn.Module):
     """
-    正弦位置編碼 (Sinusoidal Position Embedding)
-    將時間步 t 編碼為向量
-
-    使用與 Transformer 相同的公式:
-    PE(t, 2i) = sin(t / 10000^(2i/d))
-    PE(t, 2i+1) = cos(t / 10000^(2i/d))
+    Sinusoidal time embedding (same form as the Transformer paper).
+        PE(t, 2i)   = sin(t / 10000^(2i/d))
+        PE(t, 2i+1) = cos(t / 10000^(2i/d))
     """
 
     def __init__(self, dim):
@@ -35,14 +31,12 @@ class SinusoidalPositionEmbedding(nn.Module):
 
 class ResidualBlock(nn.Module):
     """
-    殘差塊 (Residual Block)
-    包含兩個卷積層和時間嵌入
+    Residual block with two convs and time-embedding injection.
 
-    結構:
         x -> Conv -> GroupNorm -> SiLU -> Conv -> GroupNorm -> + x
-                    ^
-                    |
-               time_emb -> Linear -> SiLU -> Linear
+                          ^
+                          |
+                  time_emb -> Linear -> SiLU -> Linear
     """
 
     def __init__(self, in_channels, out_channels, time_emb_dim, dropout=0.1):
@@ -54,13 +48,13 @@ class ResidualBlock(nn.Module):
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
         self.norm2 = nn.GroupNorm(8, out_channels)
 
-        # 時間嵌入映射
+        # Time embedding projection
         self.time_mlp = nn.Sequential(
             nn.SiLU(),
             nn.Linear(time_emb_dim, out_channels),
         )
 
-        # 如果輸入輸出通道不同，需要 1x1 卷積做殘差連接
+        # 1x1 conv on the skip path when channel counts differ
         if in_channels != out_channels:
             self.residual_conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
         else:
@@ -71,24 +65,22 @@ class ResidualBlock(nn.Module):
     def forward(self, x, time_emb):
         """
         Args:
-            x: 輸入特徵圖 (batch, in_channels, height, width)
-            time_emb: 時間嵌入 (batch, time_emb_dim)
+            x: feature map (batch, in_channels, height, width)
+            time_emb: time embedding (batch, time_emb_dim)
 
         Returns:
-            輸出特徵圖 (batch, out_channels, height, width)
+            feature map (batch, out_channels, height, width)
         """
         residual = self.residual_conv(x)
 
-        # 第一個卷積
         h = self.conv1(x)
         h = self.norm1(h)
         h = F.silu(h)
 
-        # 加入時間嵌入
+        # Inject time embedding (broadcast over spatial dims)
         time_emb = self.time_mlp(time_emb)
-        h = h + time_emb[:, :, None, None]  # 廣播到空間維度
+        h = h + time_emb[:, :, None, None]
 
-        # 第二個卷積
         h = self.conv2(h)
         h = self.norm2(h)
         h = F.silu(h)
@@ -99,8 +91,7 @@ class ResidualBlock(nn.Module):
 
 class AttentionBlock(nn.Module):
     """
-    自注意力塊 (Self-Attention Block)
-    在低解析度特徵圖上使用
+    Self-attention block, applied at low spatial resolutions.
     """
 
     def __init__(self, channels):
@@ -112,23 +103,21 @@ class AttentionBlock(nn.Module):
         batch, channels, height, width = x.shape
         residual = x
 
-        # 正規化
         x = self.norm(x)
 
-        # 重塑為序列 (batch, seq_len, channels)
+        # Reshape to (batch, seq_len, channels)
         x = x.view(batch, channels, height * width).permute(0, 2, 1)
 
-        # 自注意力
         x, _ = self.attention(x, x, x)
 
-        # 重塑回原來的形狀
+        # Reshape back
         x = x.permute(0, 2, 1).view(batch, channels, height, width)
 
         return x + residual
 
 
 class DownBlock(nn.Module):
-    """下採樣塊"""
+    """Downsampling block"""
 
     def __init__(self, in_channels, out_channels, time_emb_dim, has_attention=False, dropout=0.1):
         super().__init__()
@@ -145,12 +134,12 @@ class DownBlock(nn.Module):
 
 
 class UpBlock(nn.Module):
-    """上採樣塊"""
+    """Upsampling block"""
 
     def __init__(self, in_channels, out_channels, time_emb_dim, has_attention=False, dropout=0.1):
         super().__init__()
         self.upsample = nn.ConvTranspose2d(in_channels, in_channels, kernel_size=4, stride=2, padding=1)
-        # 輸入是 in_channels (上採樣後) + out_channels (skip connection)
+        # Input is in_channels (after upsample) + out_channels (skip connection)
         self.res_block = ResidualBlock(in_channels + out_channels, out_channels, time_emb_dim, dropout)
         self.attention = AttentionBlock(out_channels) if has_attention else nn.Identity()
 
@@ -164,15 +153,14 @@ class UpBlock(nn.Module):
 
 class UNet(nn.Module):
     """
-    U-Net 模型用於 DDPM
+    U-Net for DDPM.
 
-    結構:
-        64x64 -> 32x32 -> 16x16 -> 8x8 (中間層) -> 16x16 -> 32x32 -> 64x64
+        64x64 -> 32x32 -> 16x16 -> 8x8 (mid) -> 16x16 -> 32x32 -> 64x64
                                     ^
                                     |
-                              時間嵌入注入
+                              time embedding
 
-    每個解析度包含殘差塊和可選的自注意力
+    Each resolution has residual blocks plus optional self-attention.
     """
 
     def __init__(
@@ -188,14 +176,14 @@ class UNet(nn.Module):
     ):
         """
         Args:
-            in_channels: 輸入通道數 (RGB=3)
-            out_channels: 輸出通道數 (預測噪聲，也是 3)
-            model_channels: 基礎通道數
-            channel_mult: 各層通道倍數
-            attention_resolutions: 在哪些解析度加入注意力
-            num_res_blocks: 每個解析度的殘差塊數
-            dropout: Dropout 比例
-            image_size: 輸入圖片大小
+            in_channels: input channels (RGB=3)
+            out_channels: output channels (predicted noise, also 3)
+            model_channels: base channel count
+            channel_mult: channel multiplier at each level
+            attention_resolutions: resolutions that get self-attention
+            num_res_blocks: residual blocks per resolution
+            dropout: dropout rate
+            image_size: input image size
         """
         super().__init__()
 
@@ -203,7 +191,7 @@ class UNet(nn.Module):
         self.model_channels = model_channels
         self.image_size = image_size
 
-        # 時間嵌入
+        # Time embedding
         time_emb_dim = model_channels * 4
         self.time_embedding = nn.Sequential(
             SinusoidalPositionEmbedding(model_channels),
@@ -212,10 +200,10 @@ class UNet(nn.Module):
             nn.Linear(time_emb_dim, time_emb_dim),
         )
 
-        # 初始卷積
+        # Initial conv
         self.init_conv = nn.Conv2d(in_channels, model_channels, kernel_size=3, padding=1)
 
-        # 下採樣路徑
+        # Down path
         self.down_blocks = nn.ModuleList()
         channels = [model_channels]
         current_channels = model_channels
@@ -233,18 +221,16 @@ class UNet(nn.Module):
             channels.append(current_channels)
             current_resolution //= 2
 
-        # 中間層
+        # Middle
         self.mid_block1 = ResidualBlock(current_channels, current_channels, time_emb_dim, dropout)
         self.mid_attention = AttentionBlock(current_channels)
         self.mid_block2 = ResidualBlock(current_channels, current_channels, time_emb_dim, dropout)
 
-        # 上採樣路徑
+        # Up path
         self.up_blocks = nn.ModuleList()
 
         for i, mult in enumerate(reversed(channel_mult)):
             out_ch = model_channels * mult
-            # 上採樣時需要的輸入是 current_channels
-            # skip connection 的通道數是 channels 中倒數對應的
             skip_ch = channels.pop()
             has_attention = current_resolution in attention_resolutions
 
@@ -255,42 +241,39 @@ class UNet(nn.Module):
             current_channels = out_ch
             current_resolution *= 2
 
-        # 輸出層
+        # Output
         self.final_norm = nn.GroupNorm(8, model_channels)
         self.final_conv = nn.Conv2d(model_channels, out_channels, kernel_size=3, padding=1)
 
     def forward(self, x, t):
         """
         Args:
-            x: 輸入圖片 (batch, in_channels, height, width)
-            t: 時間步 (batch,)
+            x: input image (batch, in_channels, height, width)
+            t: timestep (batch,)
 
         Returns:
-            預測的噪聲 (batch, out_channels, height, width)
+            predicted noise (batch, out_channels, height, width)
         """
-        # 時間嵌入
         time_emb = self.time_embedding(t.float())
 
-        # 初始卷積
         x = self.init_conv(x)
 
-        # 下採樣，保存 skip connections
+        # Down path, save skip connections
         skips = []
         for down_block in self.down_blocks:
             x, skip = down_block(x, time_emb)
             skips.append(skip)
 
-        # 中間層
+        # Middle
         x = self.mid_block1(x, time_emb)
         x = self.mid_attention(x)
         x = self.mid_block2(x, time_emb)
 
-        # 上採樣，使用 skip connections
+        # Up path with skip connections
         for up_block in self.up_blocks:
             skip = skips.pop()
             x = up_block(x, skip, time_emb)
 
-        # 輸出
         x = self.final_norm(x)
         x = F.silu(x)
         x = self.final_conv(x)
@@ -299,7 +282,7 @@ class UNet(nn.Module):
 
 
 if __name__ == "__main__":
-    # 測試 UNet
+    # Smoke test
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     model = UNet(
         in_channels=3,
@@ -309,12 +292,10 @@ if __name__ == "__main__":
         image_size=64,
     ).to(device)
 
-    # 測試輸入
     x = torch.randn(2, 3, 64, 64).to(device)
     t = torch.randint(0, 1000, (2,)).to(device)
 
-    # 前向傳播
     out = model(x, t)
-    print(f"輸入形狀: {x.shape}")
-    print(f"輸出形狀: {out.shape}")
-    print(f"模型參數量: {sum(p.numel() for p in model.parameters()):,}")
+    print(f"Input shape: {x.shape}")
+    print(f"Output shape: {out.shape}")
+    print(f"Model params: {sum(p.numel() for p in model.parameters()):,}")

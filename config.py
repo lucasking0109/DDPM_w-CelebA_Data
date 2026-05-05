@@ -1,6 +1,6 @@
 """
-DDPM 配置檔案
-基於原始 DDPM 論文的超參數設定
+DDPM training configuration.
+Hyperparameters follow the original DDPM paper.
 """
 import os
 from pathlib import Path
@@ -8,58 +8,57 @@ import torch
 
 
 class Config:
-    """DDPM 訓練配置"""
+    """DDPM training config"""
 
-    # ==================== 路徑設定 ====================
+    # ==================== Paths ====================
     PROJECT_ROOT = Path(__file__).parent
-    # 資料快取目錄；可用環境變數 DDPM_DATA_DIR 覆蓋
+    # Data cache dir; override with DDPM_DATA_DIR env var
     DATA_CACHE_DIR = Path(os.environ.get("DDPM_DATA_DIR", PROJECT_ROOT / "data_cache"))
     OUTPUT_DIR = PROJECT_ROOT / "outputs_ddpm"
     CHECKPOINT_DIR = OUTPUT_DIR / "checkpoints"
     SAMPLE_DIR = OUTPUT_DIR / "samples"
 
-    # ==================== 資料集設定 ====================
-    DATASET = "celeba"  # "cifar10" 或 "celeba"
-    IMAGE_SIZE = 64     # DDPM 原始論文使用 64x64 或 256x256
+    # ==================== Dataset ====================
+    DATASET = "celeba"  # "cifar10" or "celeba"
+    IMAGE_SIZE = 64     # original DDPM uses 64x64 or 256x256
     CHANNELS = 3        # RGB
 
-    # ==================== Diffusion 設定 ====================
-    # 原始 DDPM 論文使用 1000 步
+    # ==================== Diffusion ====================
+    # Original DDPM uses 1000 steps
     TIMESTEPS = 1000
 
-    # Beta schedule (線性)
+    # Linear beta schedule
     BETA_START = 1e-4
     BETA_END = 0.02
 
-    # ==================== 模型設定 ====================
-    # U-Net 通道數
+    # ==================== Model ====================
     MODEL_CHANNELS = 128
-    CHANNEL_MULT = (1, 2, 2, 2)  # 各層的通道倍數
-    ATTENTION_RESOLUTIONS = (16,)  # 在 16x16 解析度加入 attention
-    NUM_RES_BLOCKS = 2  # 每個解析度的殘差塊數量
+    CHANNEL_MULT = (1, 2, 2, 2)
+    ATTENTION_RESOLUTIONS = (16,)  # add attention at 16x16 resolution
+    NUM_RES_BLOCKS = 2
     DROPOUT = 0.1
 
-    # ==================== 訓練設定 ====================
-    BATCH_SIZE = 64     # 原始論文用 128，但 64 更適合一般 GPU
+    # ==================== Training ====================
+    BATCH_SIZE = 64     # paper uses 128; 64 fits typical GPUs
     EPOCHS = 100
-    LEARNING_RATE = 2e-4  # 原始論文使用 2e-4
+    LEARNING_RATE = 2e-4
 
     # EMA (Exponential Moving Average)
     EMA_DECAY = 0.9999
     USE_EMA = True
 
-    # ==================== 儲存設定 ====================
-    SAVE_INTERVAL = 1        # 每 N epochs 儲存檢查點 (改為每 epoch 都存)
-    SAMPLE_INTERVAL = 5      # 每 N epochs 生成樣本
-    NUM_SAMPLES = 64         # 生成樣本數量 (8x8 網格)
+    # ==================== Saving ====================
+    SAVE_INTERVAL = 1        # save checkpoint every N epochs
+    SAMPLE_INTERVAL = 5      # generate samples every N epochs
+    NUM_SAMPLES = 64         # number of samples (8x8 grid)
 
-    # ==================== 其他 ====================
+    # ==================== Misc ====================
     NUM_WORKERS = 4
     SEED = 42
 
     @classmethod
     def get_device(cls):
-        """自動選擇最佳設備"""
+        """Pick the best available device"""
         if torch.cuda.is_available():
             return torch.device("cuda")
         elif torch.backends.mps.is_available():
@@ -67,36 +66,34 @@ class Config:
         else:
             return torch.device("cpu")
 
-    DEVICE = None  # 會在 init() 中設定
+    DEVICE = None  # set in init()
 
     @classmethod
     def init(cls):
-        """初始化配置，建立必要目錄"""
-        # 設定設備
+        """Initialize config and create output dirs"""
         cls.DEVICE = cls.get_device()
 
-        # 建立輸出目錄
         cls.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         cls.CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
         cls.SAMPLE_DIR.mkdir(parents=True, exist_ok=True)
 
-        # 如果是 CPU，調整批次大小
+        # Shrink batch size on CPU
         if cls.DEVICE.type == "cpu":
             cls.BATCH_SIZE = min(cls.BATCH_SIZE, 16)
             cls.NUM_WORKERS = 0
-            print("警告: 使用 CPU 訓練，已調整批次大小")
+            print("Warning: training on CPU, batch size reduced")
 
-        print(f"DDPM 配置初始化完成")
-        print(f"  - 設備: {cls.DEVICE}")
-        print(f"  - 資料集: {cls.DATASET}")
-        print(f"  - 圖片大小: {cls.IMAGE_SIZE}x{cls.IMAGE_SIZE}")
-        print(f"  - 時間步: {cls.TIMESTEPS}")
-        print(f"  - 批次大小: {cls.BATCH_SIZE}")
-        print(f"  - 輸出目錄: {cls.OUTPUT_DIR}")
+        print(f"DDPM config initialized")
+        print(f"  - Device: {cls.DEVICE}")
+        print(f"  - Dataset: {cls.DATASET}")
+        print(f"  - Image size: {cls.IMAGE_SIZE}x{cls.IMAGE_SIZE}")
+        print(f"  - Timesteps: {cls.TIMESTEPS}")
+        print(f"  - Batch size: {cls.BATCH_SIZE}")
+        print(f"  - Output dir: {cls.OUTPUT_DIR}")
 
     @classmethod
     def get_beta_schedule(cls):
-        """取得 beta schedule"""
+        """Return the beta schedule"""
         return torch.linspace(cls.BETA_START, cls.BETA_END, cls.TIMESTEPS)
 
 
